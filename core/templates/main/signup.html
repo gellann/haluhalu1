@@ -1,0 +1,96 @@
+
+{% block extra_css %}
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  .underline-effect{position:relative;display:inline-block;padding-bottom:4px;}
+  .underline-effect::after{content:'';position:absolute;width:80%;height:3px;background-color:#3B82F6;bottom:0;left:0;border-radius:9999px;}
+  body{font-family:'Inter',sans-serif;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bg-[#F0F2F5] flex items-center justify-center min-h-screen p-4">
+  <div class="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl space-y-6">
+    <h2 class="text-3xl font-semibold text-gray-800 underline-effect">Sign Up</h2>
+
+    <form method="post" {% if form.fields.profile_pic %}enctype="multipart/form-data"{% endif %} class="space-y-5">
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+        <div class="text-red-600 text-sm">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <!-- Username -->
+        <div class="input-container">
+            <i class="fa-solid fa-user input-icon"></i>
+            <input type="text" name="{{ form.username.name }}" id="{{ form.username.id_for_label }}" class="form-control" placeholder="Username" required>
+        </div>
+
+      <!-- Email -->
+    <div class="input-container">
+        <i class="fa-solid fa-envelope input-icon"></i>
+        <input
+            type="email"
+            name="{{ form.email.name }}"
+            id="{{ form.email.id_for_label }}"
+            class="form-control"
+            placeholder="Email"
+            value="{{ form.email.value|default_if_none:'' }}"
+            required>
+    </div>
+
+    {% if form.email.errors %}
+        <div class="text-red-600 text-sm mt-1">
+            {{ form.email.errors }}
+        </div>
+    {% endif %}
+
+
+    <!-- Password -->
+    <div class="input-container">
+        <i class="fa-solid fa-lock input-icon"></i>
+        <input
+            type="password"
+            name="{{ form.password1.name }}"
+            id="{{ form.password1.id_for_label }}"
+            class="form-control"
+            placeholder="Create password"
+            required>
+    </div>
+    {% if form.password1.errors %}
+        <div class="text-red-600 text-sm mt-1">
+            {{ form.password1.errors }}
+        </div>
+    {% endif %}
+
+    <!-- Confirm Password -->
+    <div class="input-container">
+        <i class="fa-solid fa-lock input-icon"></i>
+        <input
+            type="password"
+            name="{{ form.password2.name }}"
+            id="{{ form.password2.id_for_label }}"
+            class="form-control"
+            placeholder="Confirm password"
+            required>
+    </div>
+    {% if form.password2.errors %}
+        <div class="text-red-600 text-sm mt-1">
+            {{ form.password2.errors }}
+        </div>
+    {% endif %}
+
+
+      <button type="submit"
+        class="w-full bg-gray-500 text-white font-semibold py-3 rounded-lg shadow-md hover:bg-gray-600 transition-colors duration-200">
+        Register Now
+      </button>
+    </form>
+
+    <div class="text-center text-sm text-gray-600 mt-4">
+      Already have an account?
+      <a href="{% url 'login' %}" class="text-blue-500 font-semibold hover:text-blue-600">Login now</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

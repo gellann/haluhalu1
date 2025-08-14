@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <!-- Product Image -->
+    <div>
+        {% if product.image %}
+            <img src="{{ product.image.url }}" alt="{{ product.title }}" class="rounded-lg shadow-md w-full">
+        {% else %}
+            <div class="w-full h-96 flex items-center justify-center bg-gray-200 text-gray-500 rounded-lg">
+                No Image Available
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Product Details -->
+    <div>
+        <h2 class="text-3xl font-bold text-gray-800">{{ product.title }}</h2>
+        <a href="{% url 'category_list' product.category %}" class="text-gray-500 hover:underline">
+            {{ product.category }}
+        </a>
+        <p class="text-2xl font-semibold text-green-600 mt-2">₱{{ product.price }}</p>
+        <p class="mt-4 text-gray-700">{{ product.description }}</p>
+        <p class="mt-2 text-sm text-gray-500">
+            Posted by {{ product.seller.username }} on {{ product.posted_at|date:"M d, Y" }}
+        </p>
+
+        {% if product.is_sold %}
+            <div class="mt-4 px-4 py-2 bg-red-500 text-white rounded-md inline-block">Sold</div>
+        {% else %}
+            <a href="#" class="mt-4 inline-block px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">Buy Now</a>
+        {% endif %}
+
+        {% if request.user == product.seller %}
+            <div class="mt-4 flex space-x-2">
+                <a href="{% url 'product_edit' product.pk %}" class="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600">Edit</a>
+                <a href="{% url 'product_delete' product.pk %}" class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600">Delete</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -17,13 +17,20 @@ def signup_view(request):
         form = CustomUserCreationForm(request.POST, request.FILES)
         if form.is_valid():
             form.save()
+            # optional: keep success via messages since you redirect away
             messages.success(request, 'Registration completed.')
             return redirect('login')
         else:
-            messages.error(request, 'Registration failed. Invalid information.')
+            # stay on signup page with a page‑local error
+            return render(
+                request,
+                'main/signup.html',
+                {'form': form, 'error_message': 'Registration failed. Invalid information.'}
+            )
     else:
         form = CustomUserCreationForm()
-    return render(request, 'main/signup.html', {'form': form})
+        return render(request, 'main/signup.html', {'form': form})
+
 
 
 def login_view(request):

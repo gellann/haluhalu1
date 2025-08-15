@@ -12,20 +12,42 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
+        .navbar {
+        background: linear-gradient(to right, #00ffff, #ff0099);
+        padding: 15px 20px;
+        color: white;
+        font-size: 18px;
+    }
+        .hover-grow {
+    display: inline-block;
+    transition: transform 0.2s ease;
+    }
+    .hover-grow:hover {
+    transform: scale(1.1);
+    }
+    .brand-text {
+    font-weight: 800;
+    font-size: 2rem;
+    }
     </style>
 </head>
 <body class="bg-gray-100 flex flex-col min-h-screen">
 
     <!-- Navbar -->
-    <nav class="bg-white shadow-lg">
+    <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container mx-auto px-6 py-3 flex justify-between items-center">
-            <a href="{% url 'base' %}" class="text-xl font-bold text-gray-800">Haluhalu</a>
+                    <!-- Logo + Brand Name -->
+        <a href="{% url 'base' %}" class="flex items-center space-x-2 hover-grow">
+            <img src="/static/images/logo_white.png" alt=" " class="h-24 w-auto">
+            <span class="fw-bolder brand-text">MARKETPLACE</span>
+        </a>
             <div class="flex items-center space-x-4">
-                <a href="{% url 'product_list' %}" class="text-gray-700 hover:text-gray-900 transition duration-200">Products</a>
+                <a href="{% url 'product_list' %}" class="text-white hover:text-gray-300 transition duration-200">Products</a>
+
 
                 <!-- Category Dropdown -->
                 <div class="relative group">
-                    <button class="text-gray-700 hover:text-gray-900 transition duration-200 focus:outline-none">
+                    <button class="text-white hover:text-gray-300 transition duration-200 focus:outline-none">
                         Categories
                         <i class="fas fa-chevron-down ml-2 text-sm transition-transform duration-200 group-hover:rotate-180"></i>
                     </button>
@@ -48,10 +70,10 @@
                             <span class="ml-2 hidden sm:inline">Add Product</span>
                         </a>
                     {% endif %}
-                    <a href="{% url 'profile' %}" class="text-gray-700 hover:text-gray-900 transition duration-200">Profile</a>
-                    <a href="{% url 'logout' %}" class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition duration-200">Logout</a>
+                    <a href="{% url 'profile' %}" class="text-white hover:text-gray-300 transition duration-200">Profile</a>
+                    <a href="{% url 'logout' %}" class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition duration-200">Log out</a>
                 {% else %}
-                    <a href="{% url 'signup' %}" class="text-gray-700 hover:text-gray-900 transition duration-200">Sign Up</a>
+                    <a href="{% url 'signup' %}" class="text-white hover:text-gray-300 transition duration-200">Sign Up</a>
                     <a href="{% url 'login' %}" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition duration-200">Login</a>
                 {% endif %}
             </div>

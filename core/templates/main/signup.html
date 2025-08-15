@@ -1,102 +1,170 @@
-
-{% block extra_css %}
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-  .underline-effect{position:relative;display:inline-block;padding-bottom:4px;}
-  .underline-effect::after{content:'';position:absolute;width:80%;height:3px;background-color:#3B82F6;bottom:0;left:0;border-radius:9999px;}
-  body{font-family:'Inter',sans-serif;}
-</style>
-{% endblock %}
-
 {% block content %}
-<div class="bg-[#F0F2F5] flex items-center justify-center min-h-screen p-4">
-  <div class="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl space-y-6">
-    <h2 class="text-3xl font-semibold text-gray-800 underline-effect">Sign Up</h2>
+<style>
+    body {
+        background: linear-gradient(to right, #007eb4, #ff549c);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        margin: 0;
+        font-family: 'Inter', sans-serif;
+    }
+    .back-button {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        background: none;
+        border: none;
+        font-size: 1rem;
+        font-weight: 800;
+        color: #ffffff;
+        cursor: pointer;
+        text-decoration: none;
+    }
+    .signup-card {
+        background-color: #ffffff;
+        border-radius: 2rem;
+        padding: 3rem;
+        box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 400px;
+        text-align: center;
+    }
+    .form-control {
+        border-radius: 0.75rem;
+        padding: 0.75rem 1.25rem;
+        background-color: #f7f7f7;
+        border: 1px solid #e0e0e0;
+        transition: all 0.2s ease-in-out;
+        box-shadow: none;
+        width: 100%;
+        margin-bottom: 0.2rem;
+        height: 3rem;
+        text-indent: 1.5rem;
+    }
+    .form-control:focus {
+        border-color: #c9c9c9;
+        background-color: #ffffff;
+        box-shadow: 0 0 0 0.25rem rgba(0, 0, 0, 0.05);
+        margin-bottom: 0.2rem;
+    }
+    .form-control::placeholder {
+        color: #a0a0a0;
+    }
+    .btn-primary {
+        background: linear-gradient(to right, #1dc7f4, #ff51c3);
+        border: none;
+        color: #ffffff;
+        font-weight: 600;
+        padding: 0.75rem;
+        border-radius: 0.75rem;
+        width: 100%;
+        transition: background 0.2s ease-in-out;
+    }
+    .btn-primary:hover {
+        background: #000000;
+    }
+    h2 {
+        font-weight: 700;
+        margin-bottom: 2rem;
+        color: #333333;
+    }
+    .input-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #888;
+    }
+    .input-container {
+        position: relative;
+        margin-bottom: 0.2rem;
+    }
+    .message-text {
+        color: red;
+        margin-bottom: 1rem;
+        font-weight: 500;
+    }
+    .logo-section {
+        background-color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .logo-section img {
+        max-width: 50%;
+        height: auto;
+    }
+    .login-link {
+        font-weight: 600;
+        color: #000000;
+        text-decoration: none;
+    }
+</style>
 
-{% if error_message %}
-  <div class="mt-2 rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
-    {{ error_message }}
-  </div>
-{% endif %}
+<a href="/" class="back-button">&larr; Home</a>
 
-    <form method="post" {% if form.fields.profile_pic %}enctype="multipart/form-data"{% endif %} class="space-y-5">
-      {% csrf_token %}
-
-      {% if form.non_field_errors %}
-        <div class="text-red-600 text-sm">{{ form.non_field_errors }}</div>
-      {% endif %}
-
-      <!-- Username -->
-        <div class="input-container">
-            <i class="fa-solid fa-user input-icon"></i>
-            <input type="text" name="{{ form.username.name }}" id="{{ form.username.id_for_label }}" class="form-control" placeholder="Username" required>
+<div class="container">
+    <div class="row signup-card">
+        <div class="col-md-6 logo-section">
+            <img src="/static/images/logo.png" alt="Logo">
         </div>
 
-      <!-- Email -->
-    <div class="input-container">
-        <i class="fa-solid fa-envelope input-icon"></i>
-        <input
-            type="email"
-            name="{{ form.email.name }}"
-            id="{{ form.email.id_for_label }}"
-            class="form-control"
-            placeholder="Email"
-            value="{{ form.email.value|default_if_none:'' }}"
-            required>
-    </div>
+        <h2>Sign Up</h2>
 
-    {% if form.email.errors %}
-        <div class="text-red-600 text-sm mt-1">
-            {{ form.email.errors }}
+        {% if form.non_field_errors %}
+            <div class="message-text">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+
+            <!-- Username -->
+            <div class="input-container">
+                <i class="fa-solid fa-user input-icon"></i>
+                <input type="text" name="{{ form.username.name }}" id="{{ form.username.id_for_label }}"
+                       class="form-control" placeholder="Username" required>
+            </div>
+
+            <!-- Email -->
+            <div class="input-container">
+                <i class="fa-solid fa-envelope input-icon"></i>
+                <input type="email" name="{{ form.email.name }}" id="{{ form.email.id_for_label }}"
+                       class="form-control" placeholder="Email"
+                       value="{{ form.email.value|default_if_none:'' }}" required>
+            </div>
+            {% if form.email.errors %}
+                <div class="message-text">{{ form.email.errors }}</div>
+            {% endif %}
+
+            <!-- Password -->
+            <div class="input-container">
+                <i class="fa-solid fa-lock input-icon"></i>
+                <input type="password" name="{{ form.password1.name }}" id="{{ form.password1.id_for_label }}"
+                       class="form-control" placeholder="Create password" required>
+            </div>
+            {% if form.password1.errors %}
+                <div class="message-text">{{ form.password1.errors }}</div>
+            {% endif %}
+
+            <!-- Confirm Password -->
+            <div class="input-container">
+                <i class="fa-solid fa-lock input-icon"></i>
+                <input type="password" name="{{ form.password2.name }}" id="{{ form.password2.id_for_label }}"
+                       class="form-control" placeholder="Confirm password" required>
+            </div>
+            {% if form.password2.errors %}
+                <div class="message-text">{{ form.password2.errors }}</div>
+            {% endif %}
+
+            <!-- Submit Button -->
+            <button type="submit" class="btn-primary mt-4">Register Now</button>
+        </form>
+
+        <div class="mt-4 text-sm">
+            Already have an account?
+            <a href="{% url 'login' %}" class="login-link">Login now</a>
         </div>
-    {% endif %}
-
-
-    <!-- Password -->
-    <div class="input-container">
-        <i class="fa-solid fa-lock input-icon"></i>
-        <input
-            type="password"
-            name="{{ form.password1.name }}"
-            id="{{ form.password1.id_for_label }}"
-            class="form-control"
-            placeholder="Create password"
-            required>
     </div>
-    {% if form.password1.errors %}
-        <div class="text-red-600 text-sm mt-1">
-            {{ form.password1.errors }}
-        </div>
-    {% endif %}
-
-    <!-- Confirm Password -->
-    <div class="input-container">
-        <i class="fa-solid fa-lock input-icon"></i>
-        <input
-            type="password"
-            name="{{ form.password2.name }}"
-            id="{{ form.password2.id_for_label }}"
-            class="form-control"
-            placeholder="Confirm password"
-            required>
-    </div>
-    {% if form.password2.errors %}
-        <div class="text-red-600 text-sm mt-1">
-            {{ form.password2.errors }}
-        </div>
-    {% endif %}
-
-
-      <button type="submit"
-        class="w-full bg-gray-500 text-white font-semibold py-3 rounded-lg shadow-md hover:bg-gray-600 transition-colors duration-200">
-        Register Now
-      </button>
-    </form>
-
-    <div class="text-center text-sm text-gray-600 mt-4">
-      Already have an account?
-      <a href="{% url 'login' %}" class="text-blue-500 font-semibold hover:text-blue-600">Login now</a>
-    </div>
-  </div>
 </div>
 {% endblock %}

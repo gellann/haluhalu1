@@ -4,13 +4,25 @@
     <style>
         body {
             /* A subtle background color similar to the image */
-            background-color: #f0f4f9;
+            background: linear-gradient(to right, #007eb4, #ff549c);
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             margin: 0;
             font-family: 'Inter', sans-serif;
+        }
+        .back-button {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        background: none;
+        border: none;
+        font-size: 1rem;
+        font-weight: 800;
+        color: #ffffff;
+        cursor: pointer;
+        text-decoration: none;
         }
         .login-card {
             background-color: #ffffff;
@@ -29,7 +41,7 @@
             transition: all 0.2s ease-in-out;
             box-shadow: none;
             width: 100%;
-            margin-bottom: 1rem;
+            margin-bottom: 0.2rem;
             height: 3rem; /* Adjusted for a bigger box */
             text-indent: 1.5rem; /* Space for the icon */
         }
@@ -37,38 +49,33 @@
             border-color: #c9c9c9;
             background-color: #ffffff;
             box-shadow: 0 0 0 0.25rem rgba(0, 0, 0, 0.05);
+            margin-bottom: 0.2rem;
         }
         .form-control::placeholder {
             color: #a0a0a0;
         }
         .btn-primary {
-            background-color: #000000;
+            background: linear-gradient(to right, #1dc7f4, #ff51c3);
             border: none;
             color: #ffffff;
             font-weight: 600;
             padding: 0.75rem;
             border-radius: 0.75rem;
             width: 100%;
-            transition: background-color 0.2s ease-in-out;
+            transition: background 0.2s ease-in-out;
         }
         .btn-primary:hover {
-            background-color: #333333;
+            background: #000000;
         }
         .btn-outline-secondary {
             color: #000000;
-            border: 1px solid #000000;
             background-color: transparent;
             font-weight: 600;
             padding: 0.75rem;
             border-radius: 0.75rem;
             width: 100%;
-            transition: all 0.2s ease-in-out;
             margin-top: 1rem;
-            text-decoration: none; /* Removed the underline */
-        }
-        .btn-outline-secondary:hover {
-            background-color: #000000;
-            color: #ffffff;
+            text-decoration: none;
         }
         h2 {
             font-weight: 700;
@@ -90,10 +97,29 @@
         color: red;
         margin-bottom: 1rem;
         font-weight: 500;
+        }
+    .logo-section {
+        background-color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+       }
+    .logo-section img {
+        max-width: 50%;
+        height: auto;
     }
 </style>
 
-<div class="login-card">
+
+<a href="/" class="back-button">&larr; Home</a>
+
+
+<div class="container">
+    <div class="row login-card">
+    <div class="col-md-6 logo-section">
+            <img src="/static/images/logo.png" alt=" ">
+        </div>
+
     <h2>Log-in</h2>
 
     <!-- Messages inside the box -->
@@ -126,5 +152,6 @@
 
     <!-- Sign Up Button -->
     <a href="{% url 'signup' %}" class="btn btn-outline-secondary">Sign-up</a>
+    </div>
 </div>
 {% endblock %}

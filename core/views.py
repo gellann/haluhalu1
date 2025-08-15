@@ -7,6 +7,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
+from django.contrib.auth.mixins import LoginRequiredMixin   # ← add this import
+
 
 from .forms import CustomUserCreationForm, ProductForm
 from .models import CustomUser, Product
@@ -30,8 +32,6 @@ def signup_view(request):
     else:
         form = CustomUserCreationForm()
         return render(request, 'main/signup.html', {'form': form})
-
-
 
 def login_view(request):
     form = AuthenticationForm(request, data=request.POST or None)
@@ -93,41 +93,28 @@ class ProductDetailView(DetailView):
     template_name = 'core/product_detail.html'
     context_object_name = 'product'
 
-
-class ProductCreateView(CreateView):
+class ProductCreateView(LoginRequiredMixin, CreateView):
     model = Product
     form_class = ProductForm
     template_name = 'core/product_form.html'
     success_url = reverse_lazy('product_list')
+    login_url = 'login'
+    redirect_field_name = 'next'
 
     def form_valid(self, form):
-        form.instance.seller = self.request.user
+        form.instance.seller = self.request.user     # 👈 owner = current user
         messages.success(self.request, "Product created successfully!")
         return super().form_valid(form)
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['title'] = 'Create Product'
-        return context
+class ProductUpdateView(LoginRequiredMixin, UpdateView):
+    # ...
+    def get_queryset(self):
+        return super().get_queryset().filter(seller=self.request.user)  # only edit own
 
-
-class ProductUpdateView(UpdateView):
-    model = Product
-    form_class = ProductForm
-    template_name = 'core/product_form.html'
-
-    def get_success_url(self):
-        messages.success(self.request, "Product updated successfully!")
-        return reverse_lazy('product_detail', kwargs={'pk': self.object.pk})
-
+class ProductDeleteView(LoginRequiredMixin, DeleteView):
+    # ...
     def get_queryset(self):
         return super().get_queryset().filter(seller=self.request.user)
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['title'] = 'Edit Product'
-        return context
-
 
 class ProductDeleteView(DeleteView):
     model = Product

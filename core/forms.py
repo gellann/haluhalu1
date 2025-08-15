@@ -8,7 +8,7 @@ from .models import CustomUser, Product
 class CustomUserCreationForm(UserCreationForm):
     class Meta(UserCreationForm.Meta):
         model = CustomUser
-        fields = ('username', 'email', 'profile_pic', 'is_seller')
+        fields = ('username', 'email', 'profile_pic')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -23,7 +23,7 @@ class CustomUserCreationForm(UserCreationForm):
 class CustomUserChangeForm(UserChangeForm):
     class Meta(UserChangeForm.Meta):
         model = CustomUser
-        fields = ('username', 'email', 'profile_pic', 'is_seller', 'is_active', 'is_staff', 'is_superuser', 'groups',
+        fields = ('username', 'email', 'profile_pic','is_active', 'is_staff', 'is_superuser', 'groups',
                   'user_permissions')
 
 

@@ -1,7 +1,22 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h1 class="text-3xl font-bold text-gray-800 mb-6">Products</h1>
+<h1 class="text-3xl font-bold text-gray-800 mb-3">Products</h1>
+
+<!-- Add Product button (login required) -->
+<div class="mb-6 flex justify-end">
+  {% if user.is_authenticated %}
+    <a href="{% url 'product_add' %}"
+       class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">
+      <span class="text-xl leading-none">＋</span> Add Product
+    </a>
+  {% else %}
+    <a href="{% url 'login' %}?next={% url 'product_add' %}"
+       class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-600 text-blue-600 hover:bg-blue-50">
+      Log in to add
+    </a>
+  {% endif %}
+</div>
 
 <!-- Category Filter Buttons -->
 <div class="mb-6 flex flex-wrap gap-2">
@@ -42,3 +57,4 @@
     {% endfor %}
 </div>
 {% endblock %}
+

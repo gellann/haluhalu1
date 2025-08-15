@@ -3,7 +3,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .forms import CustomUserChangeForm, CustomUserCreationForm
-from .models import CustomUser, Product, Message # Corrected import and added Message
+from .models import CustomUser, Product, Message
 
 class CustomUserAdmin(UserAdmin):
     add_form = CustomUserCreationForm
@@ -22,4 +22,4 @@ class CustomUserAdmin(UserAdmin):
 
 admin.site.register(CustomUser, CustomUserAdmin)
 admin.site.register(Product)
-admin.site.register(Message) # NEW: Register Message model
+admin.site.register(Message)

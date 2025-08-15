@@ -4,7 +4,7 @@ from django.urls import path
 from . import views
 from .views import (
     ProductListView, ProductDetailView, ProductCreateView, ProductUpdateView, ProductDeleteView,
-    InboxView, SentMessagesView, SendMessageView, MessageDetailView # Import new message views
+    InboxView, SentMessagesView, SendMessageView, MessageDetailView
 )
 
 urlpatterns = [
@@ -21,10 +21,12 @@ urlpatterns = [
     path('products/add/', ProductCreateView.as_view(), name='product_add'),
     path('products/category/<str:category_name>/', ProductListView.as_view(), name='category_list'),
 
-    # NEW: Messaging URLs
+    # REVISED: Messaging URLs
     path('messages/inbox/', InboxView.as_view(), name='inbox'),
     path('messages/sent/', SentMessagesView.as_view(), name='sent_messages'),
     path('messages/send/', SendMessageView.as_view(), name='message_send'),
-    path('messages/send/<int:recipient_pk>/', SendMessageView.as_view(), name='message_send_to_user'), # For "Message Seller"
-    path('messages/<int:pk>/', MessageDetailView.as_view(), name='message_detail'),
+    path('messages/send/<int:recipient_pk>/', SendMessageView.as_view(), name='message_send_to_user'),
+    path('messages/reply/<int:parent_pk>/', SendMessageView.as_view(), name='message_reply'), # URL for replies
+    path('messages/<int:pk>/', MessageDetailView.as_view(), name='message_detail'), # Now views whole conversation
+
 ]

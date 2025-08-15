@@ -27,10 +27,8 @@
             <div class="mt-4 px-4 py-2 bg-red-500 text-white rounded-md inline-block">Sold</div>
         {% else %}
             {% if request.user.is_authenticated and request.user != product.seller %}
-                {# Now 'message_send_to_user' exists #}
                 <a href="{% url 'message_send_to_user' product.seller.pk %}" class="mt-4 inline-block px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">Message Seller</a>
             {% elif not request.user.is_authenticated %}
-                {# If not logged in, prompt to login to message #}
                 <a href="{% url 'login' %}?next={{ request.path }}" class="mt-4 inline-block px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">Login to Message Seller</a>
             {% endif %}
         {% endif %}

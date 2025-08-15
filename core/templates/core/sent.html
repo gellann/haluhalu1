@@ -3,12 +3,19 @@
 {% block content %}
 <h2 class="text-2xl font-bold mb-4">Sent Messages</h2>
 
-{% if messages %} {# Note: this refers to the Message objects, not Django's messages framework #}
+{% if conversations %}
     <div class="space-y-4">
-        {% for message in messages %}
-            <a href="{% url 'message_detail' message.pk %}" class="block bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow duration-200">
+        {% for message in conversations %}
+            {# Link to the conversation starter's detail page, which will display the whole thread #}
+            <a href="{% url 'message_detail' message.conversation_starter.pk|default:message.pk %}" class="block bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow duration-200">
                 <div class="flex justify-between items-center mb-2">
-                    <span class="font-semibold text-gray-800">To: {{ message.receiver.username }}</span>
+                    <span class="font-semibold text-gray-800">
+                        {% if request.user == message.sender %}
+                            To: {{ message.receiver.username }}
+                        {% else %}
+                            From: {{ message.sender.username }}
+                        {% endif %}
+                    </span>
                     <span class="text-sm text-gray-500">{{ message.sent_at|date:"M d, Y H:i" }}</span>
                 </div>
                 <h3 class="text-lg font-medium text-gray-900">{{ message.subject }}</h3>

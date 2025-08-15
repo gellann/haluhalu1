@@ -2,7 +2,7 @@
 
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
-from .models import CustomUser, Product, Message # Import Message model
+from .models import CustomUser, Product, Message
 
 
 class CustomUserCreationForm(UserCreationForm):
@@ -38,11 +38,11 @@ class ProductForm(forms.ModelForm):
             'category': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., Electronics, Fashion'}),
         }
 
-# NEW: MessageForm
+# MessageForm - No changes needed for conversation logic directly here
 class MessageForm(forms.ModelForm):
     class Meta:
         model = Message
-        fields = ['receiver', 'subject', 'body'] # 'sender' and 'sent_at' will be set automatically
+        fields = ['receiver', 'subject', 'body']
         widgets = {
             'receiver': forms.Select(attrs={'class': 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200'}),
             'subject': forms.TextInput(attrs={'class': 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200', 'placeholder': 'Subject'}),
@@ -50,12 +50,10 @@ class MessageForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
-        # Optional: Pass 'user' to the form to exclude self from receiver list
         self.request_user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
         if self.request_user:
-            # Exclude the current user from the list of possible receivers
             self.fields['receiver'].queryset = CustomUser.objects.exclude(pk=self.request_user.pk)
         else:
             self.fields['receiver'].queryset = CustomUser.objects.all()

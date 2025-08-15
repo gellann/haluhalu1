@@ -8,11 +8,11 @@ from django.contrib.auth.decorators import login_required
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.db.models import Q # For searching, though not used in messaging yet
+from django.db.models import Q
+from django.db.models import Max, F
 
-
-from .forms import CustomUserCreationForm, ProductForm, MessageForm # Import MessageForm
-from .models import CustomUser, Product, Message # Import Message model
+from .forms import CustomUserCreationForm, ProductForm, MessageForm
+from .models import CustomUser, Product, Message
 
 
 def signup_view(request):
@@ -31,6 +31,7 @@ def signup_view(request):
     else:
         form = CustomUserCreationForm()
         return render(request, 'main/signup.html', {'form': form})
+
 
 def login_view(request):
     form = AuthenticationForm(request, data=request.POST or None)
@@ -86,6 +87,7 @@ class ProductDetailView(DetailView):
     template_name = 'core/product_detail.html'
     context_object_name = 'product'
 
+
 class ProductCreateView(LoginRequiredMixin, CreateView):
     model = Product
     form_class = ProductForm
@@ -99,12 +101,13 @@ class ProductCreateView(LoginRequiredMixin, CreateView):
         messages.success(self.request, "Product created successfully!")
         return super().form_valid(form)
 
+
 class ProductUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = Product
     form_class = ProductForm
     template_name = 'core/product_form.html'
     context_object_name = 'product'
-    success_url = reverse_lazy('product_list') # Changed to product_list for simplicity after edit, can be product_detail
+    success_url = reverse_lazy('product_list')
     login_url = 'login'
 
     def test_func(self):
@@ -114,6 +117,7 @@ class ProductUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     def get_success_url(self):
         messages.success(self.request, "Product updated successfully!")
         return reverse_lazy('product_detail', kwargs={'pk': self.object.pk})
+
 
 class ProductDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     model = Product
@@ -131,79 +135,195 @@ class ProductDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
         return super().form_valid(form)
 
 
-# NEW: Messaging Views
+# REVISED: Messaging Views
 
-# View for user's inbox (received messages)
+# View for user's inbox (now displays conversation heads)
 class InboxView(LoginRequiredMixin, ListView):
     model = Message
     template_name = 'core/inbox.html'
-    context_object_name = 'messages'
+    context_object_name = 'conversations'
     paginate_by = 10
     login_url = 'login'
 
     def get_queryset(self):
-        # Filter messages where the current user is the receiver
-        return Message.objects.filter(receiver=self.request.user)
+        # We need to find the *unique conversation starters* that the current user is involved in.
+        # Then, for each unique conversation starter, we display the LATEST message in that conversation.
 
-# View for user's sent messages
+        # 1. Get all messages where the current user is either sender or receiver
+        user_messages = Message.objects.filter(Q(sender=self.request.user) | Q(receiver=self.request.user))
+
+        # 2. Get the IDs of all conversation starters for these messages.
+        # This includes messages that are their own conversation_starter (where conversation_starter is null,
+        # so we use their own PK) and messages that refer to another message as their starter.
+
+        # Use a subquery to find the latest message for each distinct conversation starter
+        # (or for messages that are their own starter).
+
+        # Get the IDs of the conversation starters for messages involving the user
+        conversation_starters_involved = user_messages.values_list('conversation_starter', flat=True).distinct()
+
+        # Also include messages that are their own starters (where conversation_starter is None)
+        messages_as_starters = user_messages.filter(conversation_starter__isnull=True).values_list('pk', flat=True)
+
+        # Combine and remove duplicates, also filter out None if any
+        all_relevant_starter_pks = set(list(conversation_starters_involved) + list(messages_as_starters))
+        all_relevant_starter_pks.discard(None)  # Remove None if present
+
+        # Now, for each unique conversation starter PK, find the LATEST message in that thread
+        # that the current user is involved in.
+        latest_messages_per_conversation = []
+        for starter_pk in all_relevant_starter_pks:
+            # Get the actual conversation starter message object (this is what we link to)
+            starter_message = get_object_or_404(Message, pk=starter_pk)
+
+            # Find the very last message in this specific conversation thread involving the current user
+            last_message_in_thread = Message.objects.filter(
+                Q(conversation_starter=starter_message) | Q(pk=starter_message.pk),  # Get all messages in this thread
+                Q(sender=self.request.user) | Q(receiver=self.request.user)
+                # Ensure the current user is part of this specific message
+            ).order_by('-sent_at').first()
+
+            if last_message_in_thread:
+                latest_messages_per_conversation.append(last_message_in_thread)
+
+        # Sort these conversation summary messages by their sent_at in descending order
+        # so the most recently active conversations appear at the top of the inbox.
+        return sorted(latest_messages_per_conversation, key=lambda x: x.sent_at, reverse=True)
+
+
+# View for user's sent messages (should function similarly to inbox, showing threads)
 class SentMessagesView(LoginRequiredMixin, ListView):
     model = Message
     template_name = 'core/sent.html'
-    context_object_name = 'messages'
+    context_object_name = 'conversations'
     paginate_by = 10
     login_url = 'login'
 
     def get_queryset(self):
-        # Filter messages where the current user is the sender
-        return Message.objects.filter(sender=self.request.user)
+        # Get all messages where the current user is the sender
+        user_sent_messages = Message.objects.filter(sender=self.request.user)
 
-# View for sending a new message
+        # Get the IDs of all conversation starters for these sent messages
+        conversation_starters_involved = user_sent_messages.values_list('conversation_starter', flat=True).distinct()
+        messages_as_starters = user_sent_messages.filter(conversation_starter__isnull=True).values_list('pk', flat=True)
+
+        all_relevant_starter_pks = set(list(conversation_starters_involved) + list(messages_as_starters))
+        all_relevant_starter_pks.discard(None)
+
+        latest_messages_per_conversation = []
+        for starter_pk in all_relevant_starter_pks:
+            starter_message = get_object_or_404(Message, pk=starter_pk)
+
+            # Find the very last message in this specific conversation thread
+            # The user might not be the sender of the very last message, but they initiated or participated.
+            last_message_in_thread = Message.objects.filter(
+                Q(conversation_starter=starter_message) | Q(pk=starter_message.pk),
+                Q(sender=self.request.user) | Q(receiver=self.request.user)
+                # Still show conversations where user is a participant
+            ).order_by('-sent_at').first()
+
+            if last_message_in_thread:
+                latest_messages_per_conversation.append(last_message_in_thread)
+
+        return sorted(latest_messages_per_conversation, key=lambda x: x.sent_at, reverse=True)
+
+
+# SendMessageView remains the same as before, handling parent_message and conversation_starter assignment correctly.
 class SendMessageView(LoginRequiredMixin, CreateView):
     model = Message
     form_class = MessageForm
     template_name = 'core/send_message.html'
-    success_url = reverse_lazy('sent_messages') # Redirect to sent messages after sending
+    success_url = reverse_lazy('inbox')
     login_url = 'login'
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs['user'] = self.request.user # Pass the current user to the form to filter receiver queryset
+        kwargs['user'] = self.request.user
         return kwargs
 
     def get_initial(self):
         initial = super().get_initial()
-        # If a recipient_id is passed in the URL (e.g., from "Message Seller" button)
         recipient_id = self.kwargs.get('recipient_pk')
+        parent_message_id = self.kwargs.get('parent_pk')
+
         if recipient_id:
             try:
                 recipient_user = CustomUser.objects.get(pk=recipient_id)
                 initial['receiver'] = recipient_user
             except CustomUser.DoesNotExist:
                 messages.error(self.request, "Recipient user not found.")
-                # Optionally redirect to a safer page if recipient not found
-                # Or just let the form render with an empty receiver field
+
+        if parent_message_id:
+            parent_message = get_object_or_404(Message, pk=parent_message_id)
+            initial[
+                'receiver'] = parent_message.sender if self.request.user == parent_message.receiver else parent_message.receiver
+            initial['subject'] = f"Re: {parent_message.subject}" if not parent_message.subject.startswith(
+                'Re:') else parent_message.subject
         return initial
 
     def form_valid(self, form):
-        form.instance.sender = self.request.user # Set the sender to the current logged-in user
-        messages.success(self.request, "Message sent successfully!")
-        return super().form_valid(form)
+        form.instance.sender = self.request.user
 
-# View for viewing a single message
+        parent_message_id = self.kwargs.get('parent_pk')
+        if parent_message_id:
+            parent_message = get_object_or_404(Message, pk=parent_message_id)
+            form.instance.parent_message = parent_message
+            form.instance.conversation_starter = parent_message.conversation_starter or parent_message
+        else:
+            form.instance.conversation_starter = None
+
+        response = super().form_valid(form)
+
+        if not form.instance.conversation_starter:
+            form.instance.conversation_starter = form.instance
+            form.instance.save()
+
+        messages.success(self.request, "Message sent successfully!")
+        return response
+
+
+# MessageDetailView also remains the same and correctly fetches the full conversation.
 class MessageDetailView(LoginRequiredMixin, DetailView):
     model = Message
     template_name = 'core/message_detail.html'
-    context_object_name = 'message'
+    context_object_name = 'current_message'
     login_url = 'login'
 
     def get_queryset(self):
-        # Users can only view messages they sent or received
         return Message.objects.filter(Q(sender=self.request.user) | Q(receiver=self.request.user))
 
     def get_object(self, queryset=None):
         obj = super().get_object(queryset=queryset)
-        # Mark message as read if the current user is the receiver and it's unread
-        if self.request.user == obj.receiver and not obj.is_read:
-            obj.is_read = True
-            obj.save()
         return obj
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        current_message = context['current_message']
+
+        conversation_starter = current_message.conversation_starter or current_message
+
+        conversation_messages = Message.objects.filter(
+            Q(conversation_starter=conversation_starter) | Q(pk=conversation_starter.pk)
+        ).order_by('sent_at')
+
+        context['conversation_messages'] = conversation_messages
+
+        all_participants = set()
+        for msg in conversation_messages:
+            all_participants.add(msg.sender)
+            all_participants.add(msg.receiver)
+
+        other_participant = None
+        for participant in all_participants:
+            if participant != self.request.user:
+                other_participant = participant
+                break
+
+        context['other_participant'] = other_participant
+
+        for msg in conversation_messages:
+            if self.request.user == msg.receiver and not msg.is_read:
+                msg.is_read = True
+                msg.save()
+
+        return context

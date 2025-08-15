@@ -31,3 +31,21 @@ class Product(models.Model):
 
     def get_absolute_url(self):
         return reverse('product_detail', kwargs={'pk': self.pk})
+
+# NEW: Message Model
+class Message(models.Model):
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sent_messages')
+    receiver = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='received_messages')
+    subject = models.CharField(max_length=255)
+    body = models.TextField()
+    sent_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-sent_at'] # Order messages by most recent first
+
+    def __str__(self):
+        return f"From {self.sender.username} to {self.receiver.username}: {self.subject}"
+
+    def get_absolute_url(self):
+        return reverse('message_detail', kwargs={'pk': self.pk})

@@ -2,7 +2,10 @@
 
 from django.urls import path
 from . import views
-from .views import ProductListView, ProductDetailView, ProductCreateView, ProductUpdateView, ProductDeleteView
+from .views import (
+    ProductListView, ProductDetailView, ProductCreateView, ProductUpdateView, ProductDeleteView,
+    InboxView, SentMessagesView, SendMessageView, MessageDetailView # Import new message views
+)
 
 urlpatterns = [
     path('signup/', views.signup_view, name='signup'),
@@ -16,7 +19,12 @@ urlpatterns = [
     path('products/<int:pk>/edit/', ProductUpdateView.as_view(), name='product_edit'),
     path('products/<int:pk>/delete/', ProductDeleteView.as_view(), name='product_delete'),
     path('products/add/', ProductCreateView.as_view(), name='product_add'),
-
-    # New URL pattern for categories
     path('products/category/<str:category_name>/', ProductListView.as_view(), name='category_list'),
+
+    # NEW: Messaging URLs
+    path('messages/inbox/', InboxView.as_view(), name='inbox'),
+    path('messages/sent/', SentMessagesView.as_view(), name='sent_messages'),
+    path('messages/send/', SendMessageView.as_view(), name='message_send'),
+    path('messages/send/<int:recipient_pk>/', SendMessageView.as_view(), name='message_send_to_user'), # For "Message Seller"
+    path('messages/<int:pk>/', MessageDetailView.as_view(), name='message_detail'),
 ]

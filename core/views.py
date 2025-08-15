@@ -185,60 +185,13 @@ class InboxView(LoginRequiredMixin, ListView):
         # Sort these summary messages by their sent_at in descending order
         return sorted(latest_messages_per_conversation, key=lambda x: x.sent_at, reverse=True)
 
-
-class SentMessagesView(LoginRequiredMixin, ListView):
-    model = Message
-    template_name = 'core/sent.html'
-    context_object_name = 'conversations'
-    paginate_by = 10
-    login_url = 'login'
-
-    def get_queryset(self):
-        user = self.request.user
-
-        # Get the IDs of all messages (sent by user) that are conversation starters,
-        # and are not deleted by the current user.
-        user_initiated_conversation_starter_ids = Message.objects.filter(
-            sender=user,
-            is_deleted_by_sender=False,
-            conversation_starter__isnull=True
-        ).values_list('pk', flat=True)
-
-        # Get the PKs of conversation starters for all messages sent by the user
-        all_sent_message_starter_ids = Message.objects.filter(
-            sender=user,
-            is_deleted_by_sender=False
-        ).values_list('conversation_starter__pk', flat=True)
-
-        # Combine and get unique non-None starter PKs
-        unique_starter_pks = set(list(user_initiated_conversation_starter_ids) + list(all_sent_message_starter_ids))
-        unique_starter_pks.discard(None)
-
-        valid_conversation_starters = Message.objects.filter(
-            pk__in=list(unique_starter_pks)
-        ).filter(
-            Q(sender=user, is_deleted_by_sender=False) | Q(receiver=user, is_deleted_by_receiver=False)
-        )
-
-        latest_messages_per_conversation = []
-        for starter in valid_conversation_starters:
-            latest_message_in_thread = Message.objects.filter(
-                Q(conversation_starter=starter) | Q(pk=starter.pk)
-            ).filter(
-                Q(sender=user, is_deleted_by_sender=False) | Q(receiver=user, is_deleted_by_receiver=False)
-            ).order_by('-sent_at').first()
-
-            if latest_message_in_thread:
-                latest_messages_per_conversation.append(latest_message_in_thread)
-
-        return sorted(latest_messages_per_conversation, key=lambda x: x.sent_at, reverse=True)
-
+# REMOVED: SentMessagesView is no longer needed
 
 class SendMessageView(LoginRequiredMixin, CreateView):
     model = Message
     form_class = MessageForm
     template_name = 'core/send_message.html'
-    success_url = reverse_lazy('inbox')
+    success_url = reverse_lazy('inbox') # Always redirect to inbox
     login_url = 'login'
 
     def get_form_kwargs(self):
@@ -292,19 +245,14 @@ class MessageDetailView(LoginRequiredMixin, DetailView):
 
     def get_queryset(self):
         user = self.request.user
-        # Only allow users to view messages they are involved in AND not deleted by them
         return Message.objects.filter(
             Q(sender=user, is_deleted_by_sender=False) | Q(receiver=user, is_deleted_by_receiver=False)
         )
 
     def get_object(self, queryset=None):
         pk = self.kwargs.get(self.pk_url_kwarg)
-        # Attempt to get the message based on the PK provided
         obj = get_object_or_404(self.get_queryset(), pk=pk)
 
-        # If the fetched object isn't its own conversation_starter,
-        # get the actual conversation_starter and use that.
-        # This ensures we always load the conversation from its head.
         if obj.conversation_starter and obj.conversation_starter.pk != obj.pk:
             return get_object_or_404(self.get_queryset(), pk=obj.conversation_starter.pk)
         return obj
@@ -313,10 +261,8 @@ class MessageDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
-        conversation_starter_message = context['current_message'] # This is now guaranteed to be the starter
+        conversation_starter_message = context['current_message']
 
-        # Fetch ALL messages related to this conversation starter, ordered by sent_at,
-        # and not deleted by the current user.
         conversation_messages = Message.objects.filter(
             Q(conversation_starter=conversation_starter_message) | Q(pk=conversation_starter_message.pk)
         ).filter(
@@ -338,7 +284,6 @@ class MessageDetailView(LoginRequiredMixin, DetailView):
 
         context['other_participant'] = other_participant
 
-        # Mark all messages in this conversation as read for the current user (if they are the receiver)
         for msg in conversation_messages:
             if user == msg.receiver and not msg.is_read:
                 msg.is_read = True
@@ -355,12 +300,10 @@ def delete_conversation_view(request, pk):
     conversation_starter = get_object_or_404(Message, pk=pk)
     user = request.user
 
-    # Verify the user is a participant in this conversation (either sender or receiver of the starter)
     if not (conversation_starter.sender == user or conversation_starter.receiver == user):
         messages.error(request, "You are not authorized to delete this conversation.")
         return redirect('inbox')
 
-    # Get all messages in this conversation thread
     messages_in_thread = Message.objects.filter(
         Q(conversation_starter=conversation_starter) | Q(pk=conversation_starter.pk)
     )

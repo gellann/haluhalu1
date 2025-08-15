@@ -4,7 +4,7 @@ from django.urls import path
 from . import views
 from .views import (
     ProductListView, ProductDetailView, ProductCreateView, ProductUpdateView, ProductDeleteView,
-    InboxView, SentMessagesView, SendMessageView, MessageDetailView,
+    InboxView, SendMessageView, MessageDetailView, # Removed SentMessagesView
     delete_conversation_view
 )
 
@@ -24,7 +24,7 @@ urlpatterns = [
 
     # Messaging URLs
     path('messages/inbox/', InboxView.as_view(), name='inbox'),
-    path('messages/sent/', SentMessagesView.as_view(), name='sent_messages'),
+    # REMOVED: path('messages/sent/', SentMessagesView.as_view(), name='sent_messages'),
     path('messages/send/', SendMessageView.as_view(), name='message_send'),
     path('messages/send/<int:recipient_pk>/', SendMessageView.as_view(), name='message_send_to_user'),
     path('messages/reply/<int:parent_pk>/', SendMessageView.as_view(), name='message_reply'),

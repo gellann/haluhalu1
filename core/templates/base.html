@@ -31,17 +31,17 @@
 <body class="bg-gray-100 flex flex-col min-h-screen">
 
     <nav class="navbar navbar-expand-lg navbar-dark">
-        <div class="container mx-auto px-4 py-0 flex justify-between items-center">
-                    <a href="{% url 'base' %}" class="flex items-center space-x-2 hover-grow">
-            <img src="/static/images/logo_white.png" alt=" " class="h-24 w-auto">
-            <span class="fw-bolder brand-text">MARKETPLACE</span>
+        <div class="container mx-auto px-0 py-0 flex justify-between items-center">
+                    <a href="{% url 'product_list' %}" class="flex items-center space-x-2 hover-grow">
+            <img src="/static/images/logo_white.png" alt=" " class="h-12 w-auto">
+           <span class="font-extrabold text-xl">MARKETPLACE</span>
         </a>
             <div class="flex items-center space-x-4">
-                <a href="{% url 'product_list' %}" class="text-white hover:text-gray-300 transition duration-200">Products</a>
+                <a href="{% url 'product_list' %}" class="text-white text-base font-thin hover:text-gray-300 transition duration-200">Products</a>
 
 
                 <div class="relative group">
-                    <button class="text-white hover:text-gray-300 transition duration-200 focus:outline-none">
+                    <button class="text-white text-base font-thin hover:text-gray-300 transition duration-200 focus:outline-none">
                         Categories
                         <i class="fas fa-chevron-down ml-2 text-sm transition-transform duration-200 group-hover:rotate-180"></i>
                     </button>
@@ -55,21 +55,21 @@
 
                 {% if user.is_authenticated %}
                     {% if user.is_seller %}
-                        <a href="{% url 'product_create' %}" class="flex items-center text-gray-700 hover:text-gray-900 transition duration-200">
+                        <a href="{% url 'product_create' %}" class="flex items-center text-white text-base font-thin hover:text-gray-900 transition duration-200">
                             <i class="fas fa-plus-circle text-xl"></i>
                             <span class="ml-2 hidden sm:inline">Add Product</span>
                         </a>
                     {% endif %}
 
                     {# Messaging Links #}
-                    <a href="{% url 'inbox' %}" class="text-white hover:text-gray-300 transition duration-200">Inbox</a>
+                    <a href="{% url 'inbox' %}" class="text-white text-base font-thin hover:text-gray-300 transition duration-200">Inbox</a>
                     {# REMOVED: <a href="{% url 'sent_messages' %}" class="text-white hover:text-gray-300 transition duration-200">Sent</a> #}
 
-                    <a href="{% url 'profile' %}" class="text-white hover:text-gray-300 transition duration-200">Profile</a>
-                    <a href="{% url 'logout' %}" class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition duration-200">Log out</a>
+                    <a href="{% url 'profile' %}" class="text-white text-base font-thin hover:text-gray-300 transition duration-200">Profile</a>
+                    <a href="{% url 'logout' %}" class="px-2 py-1 bg-red-500 text-white text-base rounded-md hover:bg-red-600 transition duration-200">Log out</a>
                 {% else %}
-                    <a href="{% url 'signup' %}" class="text-white hover:text-gray-300 transition duration-200">Sign Up</a>
-                    <a href="{% url 'login' %}" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition duration-200">Login</a>
+                    <a href="{% url 'signup' %}" class="text-white text-base font-thin hover:text-gray-300 transition duration-200">Sign Up</a>
+                    <a href="{% url 'login' %}" class="px-2 py-1 bg-blue-500 text-white text-base rounded-md hover:bg-blue-600 transition duration-200">Login</a>
                 {% endif %}
             </div>
         </div>
@@ -87,10 +87,8 @@
         {% block content %}{% endblock %}
     </main>
 
-    <footer class="bg-gray-800 text-white py-4 mt-auto">
-        <div class="container mx-auto px-6 text-center">
-            <p>&copy; 2024 Haluhalu Marketplace. All rights reserved.</p>
-        </div>
+    <footer class="bg-gray-800 text-white px-4 py-1 text-center mt-8">
+        <p>&copy; 2024 HaluHalu Marketplace. All Rights Reserved.</p>
     </footer>
 
     <script>

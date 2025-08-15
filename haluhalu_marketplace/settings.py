@@ -54,17 +54,21 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'haluhalu_marketplace.urls'
 
+# haluhalu_marketplace/settings.py
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'templates')]
-        ,
+        'DIRS': [os.path.join(BASE_DIR, 'templates')], # You might have 'templates' or 'core/templates'
+                                                      # depending on your specific setup.
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug', # Often included by default
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'core.context_processors.categories_processor', # ADD THIS LINE
             ],
         },
     },

@@ -7,7 +7,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
-from django.contrib.auth.mixins import LoginRequiredMixin   # ← add this import
+# Make sure to import UserPassesTestMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 
 
 from .forms import CustomUserCreationForm, ProductForm
@@ -19,11 +20,9 @@ def signup_view(request):
         form = CustomUserCreationForm(request.POST, request.FILES)
         if form.is_valid():
             form.save()
-            # optional: keep success via messages since you redirect away
             messages.success(request, 'Registration completed.')
             return redirect('login')
         else:
-            # stay on signup page with a page‑local error
             return render(
                 request,
                 'main/signup.html',
@@ -69,7 +68,6 @@ class ProductListView(ListView):
     context_object_name = 'products'
     paginate_by = 10
 
-    # Added to handle category filtering
     def get_queryset(self):
         queryset = super().get_queryset()
         category_name = self.kwargs.get('category_name')
@@ -77,17 +75,13 @@ class ProductListView(ListView):
             queryset = queryset.filter(category__iexact=category_name)
         return queryset
 
-    # Added to pass categories to the template
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['selected_category'] = self.kwargs.get('category_name')
-        # You'll also want to pass a list of all unique categories to the template
-        # for displaying the category buttons
         context['categories'] = Product.objects.values_list('category', flat=True).distinct()
         return context
 
 
-# The following class-based views for CRUD operations were added
 class ProductDetailView(DetailView):
     model = Product
     template_name = 'core/product_detail.html'
@@ -102,28 +96,39 @@ class ProductCreateView(LoginRequiredMixin, CreateView):
     redirect_field_name = 'next'
 
     def form_valid(self, form):
-        form.instance.seller = self.request.user     # 👈 owner = current user
+        form.instance.seller = self.request.user
         messages.success(self.request, "Product created successfully!")
         return super().form_valid(form)
 
-class ProductUpdateView(LoginRequiredMixin, UpdateView):
-    # ...
-    def get_queryset(self):
-        return super().get_queryset().filter(seller=self.request.user)  # only edit own
+# REVISED: ProductUpdateView to use UserPassesTestMixin
+class ProductUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+    model = Product
+    form_class = ProductForm
+    template_name = 'core/product_form.html'
+    context_object_name = 'product'
+    login_url = 'login' # Ensure redirection to login if not authenticated
 
-class ProductDeleteView(LoginRequiredMixin, DeleteView):
-    # ...
-    def get_queryset(self):
-        return super().get_queryset().filter(seller=self.request.user)
+    def test_func(self):
+        # Ensure only the seller can edit their product
+        product = self.get_object()
+        return self.request.user == product.seller
 
-class ProductDeleteView(DeleteView):
+    def get_success_url(self):
+        messages.success(self.request, "Product updated successfully!")
+        return reverse_lazy('product_detail', kwargs={'pk': self.object.pk})
+
+# REVISED: ProductDeleteView to use UserPassesTestMixin
+class ProductDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     model = Product
     template_name = 'core/product_confirm_delete.html'
     success_url = reverse_lazy('product_list')
     context_object_name = 'product'
+    login_url = 'login' # Ensure redirection to login if not authenticated
 
-    def get_queryset(self):
-        return super().get_queryset().filter(seller=self.request.user)
+    def test_func(self):
+        # Ensure only the seller can delete their product
+        product = self.get_object()
+        return self.request.user == product.seller
 
     def form_valid(self, form):
         messages.success(self.request, "Product deleted successfully!")

@@ -38,7 +38,6 @@ class ProductForm(forms.ModelForm):
             'category': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., Electronics, Fashion'}),
         }
 
-# MessageForm - No changes needed for conversation logic directly here
 class MessageForm(forms.ModelForm):
     class Meta:
         model = Message

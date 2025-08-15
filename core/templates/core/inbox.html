@@ -6,28 +6,31 @@
 {% if conversations %}
     <div class="space-y-4">
         {% for message in conversations %}
-            {# Link to the conversation starter's detail page, which will display the whole thread #}
-            {# Ensure the URL uses the conversation_starter's PK, or the message's PK if it's the starter itself #}
-            <a href="{% url 'message_detail' message.conversation_starter.pk|default:message.pk %}" class="block bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow duration-200">
-                <div class="flex justify-between items-center mb-2">
-                    {# Display the other participant in the conversation #}
-                    <span class="font-semibold text-gray-800">
-                        {# Determine the other participant #}
-                        {% if request.user == message.sender %}
-                            To: {{ message.receiver.username }}
-                        {% else %}
-                            From: {{ message.sender.username }}
-                        {% endif %}
-                    </span>
-                    <span class="text-sm text-gray-500">{{ message.sent_at|date:"M d, Y H:i" }}</span>
-                </div>
-                <h3 class="text-lg font-medium text-gray-900">{{ message.subject }}</h3>
-                <p class="text-gray-600 text-sm line-clamp-2">{{ message.body }}</p>
-                {# Check if the latest message itself is unread for the current user (as receiver) #}
-                {% if request.user == message.receiver and not message.is_read %}
-                    <span class="text-blue-600 text-xs font-semibold mt-1 inline-block">New Activity</span>
-                {% endif %}
-            </a>
+            <div class="block bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow duration-200 relative">
+                <a href="{% url 'message_detail' message.conversation_starter.pk|default:message.pk %}" class="block">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-semibold text-gray-800">
+                            {% if request.user == message.sender %}
+                                To: {{ message.receiver.username }}
+                            {% else %}
+                                From: {{ message.sender.username }}
+                            {% endif %}
+                        </span>
+                        <span class="text-sm text-gray-500">{{ message.sent_at|date:"M d, Y H:i" }}</span>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-900">{{ message.subject }}</h3>
+                    <p class="text-gray-600 text-sm line-clamp-2">{{ message.body }}</p>
+                    {% if request.user == message.receiver and not message.is_read %}
+                        <span class="text-blue-600 text-xs font-semibold mt-1 inline-block">New Activity</span>
+                    {% endif %}
+                </a>
+                <form action="{% url 'delete_conversation' message.conversation_starter.pk|default:message.pk %}" method="post" class="absolute top-4 right-4" onsubmit="return confirm('Are you sure you want to delete this conversation? This will only remove it from your view.');">
+                    {% csrf_token %}
+                    <button type="submit" class="text-red-500 hover:text-red-700 p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500" aria-label="Delete conversation">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </form>
+            </div>
         {% endfor %}
     </div>
 

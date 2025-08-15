@@ -9,7 +9,8 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView, D
 from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Q
-from django.db.models import Max, F
+from django.db.models import Max, F, Subquery, OuterRef
+
 
 from .forms import CustomUserCreationForm, ProductForm, MessageForm
 from .models import CustomUser, Product, Message
@@ -31,7 +32,6 @@ def signup_view(request):
     else:
         form = CustomUserCreationForm()
         return render(request, 'main/signup.html', {'form': form})
-
 
 def login_view(request):
     form = AuthenticationForm(request, data=request.POST or None)
@@ -87,7 +87,6 @@ class ProductDetailView(DetailView):
     template_name = 'core/product_detail.html'
     context_object_name = 'product'
 
-
 class ProductCreateView(LoginRequiredMixin, CreateView):
     model = Product
     form_class = ProductForm
@@ -100,7 +99,6 @@ class ProductCreateView(LoginRequiredMixin, CreateView):
         form.instance.seller = self.request.user
         messages.success(self.request, "Product created successfully!")
         return super().form_valid(form)
-
 
 class ProductUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = Product
@@ -117,7 +115,6 @@ class ProductUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     def get_success_url(self):
         messages.success(self.request, "Product updated successfully!")
         return reverse_lazy('product_detail', kwargs={'pk': self.object.pk})
-
 
 class ProductDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     model = Product
@@ -137,7 +134,6 @@ class ProductDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
 
 # REVISED: Messaging Views
 
-# View for user's inbox (now displays conversation heads)
 class InboxView(LoginRequiredMixin, ListView):
     model = Message
     template_name = 'core/inbox.html'
@@ -146,52 +142,50 @@ class InboxView(LoginRequiredMixin, ListView):
     login_url = 'login'
 
     def get_queryset(self):
-        # We need to find the *unique conversation starters* that the current user is involved in.
-        # Then, for each unique conversation starter, we display the LATEST message in that conversation.
+        user = self.request.user
 
-        # 1. Get all messages where the current user is either sender or receiver
-        user_messages = Message.objects.filter(Q(sender=self.request.user) | Q(receiver=self.request.user))
+        # Get the IDs of all messages (sent or received by user) that are conversation starters,
+        # and are not deleted by the current user.
+        user_involved_conversation_starter_ids = Message.objects.filter(
+            Q(sender=user, is_deleted_by_sender=False) | Q(receiver=user, is_deleted_by_receiver=False)
+        ).values_list('conversation_starter__pk', flat=True) # Get starter PKs of all involved messages
 
-        # 2. Get the IDs of all conversation starters for these messages.
-        # This includes messages that are their own conversation_starter (where conversation_starter is null,
-        # so we use their own PK) and messages that refer to another message as their starter.
+        # Add the PKs of messages that are their own conversation starters (initial messages)
+        user_involved_initial_message_ids = Message.objects.filter(
+            Q(sender=user, is_deleted_by_sender=False, conversation_starter__isnull=True) |
+            Q(receiver=user, is_deleted_by_receiver=False, conversation_starter__isnull=True)
+        ).values_list('pk', flat=True)
 
-        # Use a subquery to find the latest message for each distinct conversation starter
-        # (or for messages that are their own starter).
+        # Combine and get unique non-None starter PKs
+        unique_starter_pks = set(list(user_involved_conversation_starter_ids) + list(user_involved_initial_message_ids))
+        unique_starter_pks.discard(None) # Remove None if present
 
-        # Get the IDs of the conversation starters for messages involving the user
-        conversation_starters_involved = user_messages.values_list('conversation_starter', flat=True).distinct()
+        # Fetch the actual conversation starter objects for these unique PKs
+        # These are the "heads" of the conversations that should appear in the inbox
+        # We also need to filter these starter messages themselves by their deletion status for the user
+        valid_conversation_starters = Message.objects.filter(
+            pk__in=list(unique_starter_pks)
+        ).filter(
+            Q(sender=user, is_deleted_by_sender=False) | Q(receiver=user, is_deleted_by_receiver=False)
+        )
 
-        # Also include messages that are their own starters (where conversation_starter is None)
-        messages_as_starters = user_messages.filter(conversation_starter__isnull=True).values_list('pk', flat=True)
-
-        # Combine and remove duplicates, also filter out None if any
-        all_relevant_starter_pks = set(list(conversation_starters_involved) + list(messages_as_starters))
-        all_relevant_starter_pks.discard(None)  # Remove None if present
-
-        # Now, for each unique conversation starter PK, find the LATEST message in that thread
-        # that the current user is involved in.
+        # Now, for each valid conversation starter, find the LATEST message within that entire thread
+        # that the current user is still able to see (i.e., not deleted by them).
         latest_messages_per_conversation = []
-        for starter_pk in all_relevant_starter_pks:
-            # Get the actual conversation starter message object (this is what we link to)
-            starter_message = get_object_or_404(Message, pk=starter_pk)
-
-            # Find the very last message in this specific conversation thread involving the current user
-            last_message_in_thread = Message.objects.filter(
-                Q(conversation_starter=starter_message) | Q(pk=starter_message.pk),  # Get all messages in this thread
-                Q(sender=self.request.user) | Q(receiver=self.request.user)
-                # Ensure the current user is part of this specific message
+        for starter in valid_conversation_starters:
+            latest_message_in_thread = Message.objects.filter(
+                Q(conversation_starter=starter) | Q(pk=starter.pk) # All messages related to this starter
+            ).filter(
+                Q(sender=user, is_deleted_by_sender=False) | Q(receiver=user, is_deleted_by_receiver=False)
             ).order_by('-sent_at').first()
 
-            if last_message_in_thread:
-                latest_messages_per_conversation.append(last_message_in_thread)
+            if latest_message_in_thread:
+                latest_messages_per_conversation.append(latest_message_in_thread)
 
-        # Sort these conversation summary messages by their sent_at in descending order
-        # so the most recently active conversations appear at the top of the inbox.
+        # Sort these summary messages by their sent_at in descending order
         return sorted(latest_messages_per_conversation, key=lambda x: x.sent_at, reverse=True)
 
 
-# View for user's sent messages (should function similarly to inbox, showing threads)
 class SentMessagesView(LoginRequiredMixin, ListView):
     model = Message
     template_name = 'core/sent.html'
@@ -200,35 +194,46 @@ class SentMessagesView(LoginRequiredMixin, ListView):
     login_url = 'login'
 
     def get_queryset(self):
-        # Get all messages where the current user is the sender
-        user_sent_messages = Message.objects.filter(sender=self.request.user)
+        user = self.request.user
 
-        # Get the IDs of all conversation starters for these sent messages
-        conversation_starters_involved = user_sent_messages.values_list('conversation_starter', flat=True).distinct()
-        messages_as_starters = user_sent_messages.filter(conversation_starter__isnull=True).values_list('pk', flat=True)
+        # Get the IDs of all messages (sent by user) that are conversation starters,
+        # and are not deleted by the current user.
+        user_initiated_conversation_starter_ids = Message.objects.filter(
+            sender=user,
+            is_deleted_by_sender=False,
+            conversation_starter__isnull=True
+        ).values_list('pk', flat=True)
 
-        all_relevant_starter_pks = set(list(conversation_starters_involved) + list(messages_as_starters))
-        all_relevant_starter_pks.discard(None)
+        # Get the PKs of conversation starters for all messages sent by the user
+        all_sent_message_starter_ids = Message.objects.filter(
+            sender=user,
+            is_deleted_by_sender=False
+        ).values_list('conversation_starter__pk', flat=True)
+
+        # Combine and get unique non-None starter PKs
+        unique_starter_pks = set(list(user_initiated_conversation_starter_ids) + list(all_sent_message_starter_ids))
+        unique_starter_pks.discard(None)
+
+        valid_conversation_starters = Message.objects.filter(
+            pk__in=list(unique_starter_pks)
+        ).filter(
+            Q(sender=user, is_deleted_by_sender=False) | Q(receiver=user, is_deleted_by_receiver=False)
+        )
 
         latest_messages_per_conversation = []
-        for starter_pk in all_relevant_starter_pks:
-            starter_message = get_object_or_404(Message, pk=starter_pk)
-
-            # Find the very last message in this specific conversation thread
-            # The user might not be the sender of the very last message, but they initiated or participated.
-            last_message_in_thread = Message.objects.filter(
-                Q(conversation_starter=starter_message) | Q(pk=starter_message.pk),
-                Q(sender=self.request.user) | Q(receiver=self.request.user)
-                # Still show conversations where user is a participant
+        for starter in valid_conversation_starters:
+            latest_message_in_thread = Message.objects.filter(
+                Q(conversation_starter=starter) | Q(pk=starter.pk)
+            ).filter(
+                Q(sender=user, is_deleted_by_sender=False) | Q(receiver=user, is_deleted_by_receiver=False)
             ).order_by('-sent_at').first()
 
-            if last_message_in_thread:
-                latest_messages_per_conversation.append(last_message_in_thread)
+            if latest_message_in_thread:
+                latest_messages_per_conversation.append(latest_message_in_thread)
 
         return sorted(latest_messages_per_conversation, key=lambda x: x.sent_at, reverse=True)
 
 
-# SendMessageView remains the same as before, handling parent_message and conversation_starter assignment correctly.
 class SendMessageView(LoginRequiredMixin, CreateView):
     model = Message
     form_class = MessageForm
@@ -255,10 +260,8 @@ class SendMessageView(LoginRequiredMixin, CreateView):
 
         if parent_message_id:
             parent_message = get_object_or_404(Message, pk=parent_message_id)
-            initial[
-                'receiver'] = parent_message.sender if self.request.user == parent_message.receiver else parent_message.receiver
-            initial['subject'] = f"Re: {parent_message.subject}" if not parent_message.subject.startswith(
-                'Re:') else parent_message.subject
+            initial['receiver'] = parent_message.sender if self.request.user == parent_message.receiver else parent_message.receiver
+            initial['subject'] = f"Re: {parent_message.subject}" if not parent_message.subject.startswith('Re:') else parent_message.subject
         return initial
 
     def form_valid(self, form):
@@ -281,8 +284,6 @@ class SendMessageView(LoginRequiredMixin, CreateView):
         messages.success(self.request, "Message sent successfully!")
         return response
 
-
-# MessageDetailView also remains the same and correctly fetches the full conversation.
 class MessageDetailView(LoginRequiredMixin, DetailView):
     model = Message
     template_name = 'core/message_detail.html'
@@ -290,20 +291,36 @@ class MessageDetailView(LoginRequiredMixin, DetailView):
     login_url = 'login'
 
     def get_queryset(self):
-        return Message.objects.filter(Q(sender=self.request.user) | Q(receiver=self.request.user))
+        user = self.request.user
+        # Only allow users to view messages they are involved in AND not deleted by them
+        return Message.objects.filter(
+            Q(sender=user, is_deleted_by_sender=False) | Q(receiver=user, is_deleted_by_receiver=False)
+        )
 
     def get_object(self, queryset=None):
-        obj = super().get_object(queryset=queryset)
+        pk = self.kwargs.get(self.pk_url_kwarg)
+        # Attempt to get the message based on the PK provided
+        obj = get_object_or_404(self.get_queryset(), pk=pk)
+
+        # If the fetched object isn't its own conversation_starter,
+        # get the actual conversation_starter and use that.
+        # This ensures we always load the conversation from its head.
+        if obj.conversation_starter and obj.conversation_starter.pk != obj.pk:
+            return get_object_or_404(self.get_queryset(), pk=obj.conversation_starter.pk)
         return obj
+
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        current_message = context['current_message']
+        user = self.request.user
+        conversation_starter_message = context['current_message'] # This is now guaranteed to be the starter
 
-        conversation_starter = current_message.conversation_starter or current_message
-
+        # Fetch ALL messages related to this conversation starter, ordered by sent_at,
+        # and not deleted by the current user.
         conversation_messages = Message.objects.filter(
-            Q(conversation_starter=conversation_starter) | Q(pk=conversation_starter.pk)
+            Q(conversation_starter=conversation_starter_message) | Q(pk=conversation_starter_message.pk)
+        ).filter(
+            Q(sender=user, is_deleted_by_sender=False) | Q(receiver=user, is_deleted_by_receiver=False)
         ).order_by('sent_at')
 
         context['conversation_messages'] = conversation_messages
@@ -315,15 +332,45 @@ class MessageDetailView(LoginRequiredMixin, DetailView):
 
         other_participant = None
         for participant in all_participants:
-            if participant != self.request.user:
+            if participant != user:
                 other_participant = participant
                 break
 
         context['other_participant'] = other_participant
 
+        # Mark all messages in this conversation as read for the current user (if they are the receiver)
         for msg in conversation_messages:
-            if self.request.user == msg.receiver and not msg.is_read:
+            if user == msg.receiver and not msg.is_read:
                 msg.is_read = True
                 msg.save()
 
         return context
+
+@login_required
+def delete_conversation_view(request, pk):
+    """
+    Handles soft deletion of an entire conversation for the current user.
+    The PK passed is expected to be the conversation_starter's PK.
+    """
+    conversation_starter = get_object_or_404(Message, pk=pk)
+    user = request.user
+
+    # Verify the user is a participant in this conversation (either sender or receiver of the starter)
+    if not (conversation_starter.sender == user or conversation_starter.receiver == user):
+        messages.error(request, "You are not authorized to delete this conversation.")
+        return redirect('inbox')
+
+    # Get all messages in this conversation thread
+    messages_in_thread = Message.objects.filter(
+        Q(conversation_starter=conversation_starter) | Q(pk=conversation_starter.pk)
+    )
+
+    for message in messages_in_thread:
+        if message.sender == user:
+            message.is_deleted_by_sender = True
+        if message.receiver == user:
+            message.is_deleted_by_receiver = True
+        message.save()
+
+    messages.success(request, "Conversation deleted successfully.")
+    return redirect('inbox')

@@ -4,7 +4,8 @@ from django.urls import path
 from . import views
 from .views import (
     ProductListView, ProductDetailView, ProductCreateView, ProductUpdateView, ProductDeleteView,
-    InboxView, SentMessagesView, SendMessageView, MessageDetailView
+    InboxView, SentMessagesView, SendMessageView, MessageDetailView,
+    delete_conversation_view
 )
 
 urlpatterns = [
@@ -21,12 +22,13 @@ urlpatterns = [
     path('products/add/', ProductCreateView.as_view(), name='product_add'),
     path('products/category/<str:category_name>/', ProductListView.as_view(), name='category_list'),
 
-    # REVISED: Messaging URLs
+    # Messaging URLs
     path('messages/inbox/', InboxView.as_view(), name='inbox'),
     path('messages/sent/', SentMessagesView.as_view(), name='sent_messages'),
     path('messages/send/', SendMessageView.as_view(), name='message_send'),
     path('messages/send/<int:recipient_pk>/', SendMessageView.as_view(), name='message_send_to_user'),
-    path('messages/reply/<int:parent_pk>/', SendMessageView.as_view(), name='message_reply'), # URL for replies
-    path('messages/<int:pk>/', MessageDetailView.as_view(), name='message_detail'), # Now views whole conversation
+    path('messages/reply/<int:parent_pk>/', SendMessageView.as_view(), name='message_reply'),
+    path('messages/<int:pk>/', MessageDetailView.as_view(), name='message_detail'),
 
+    path('messages/<int:pk>/delete/', views.delete_conversation_view, name='delete_conversation'),
 ]

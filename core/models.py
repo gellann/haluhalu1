@@ -4,6 +4,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
 from django.urls import reverse
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 
 class CustomUser(AbstractUser):
@@ -33,6 +34,14 @@ class Product(models.Model):
     def get_absolute_url(self):
         return reverse('product_detail', kwargs={'pk': self.pk})
 
+    def average_rating(self):
+        # Calculate the average rating from all related reviews
+        return self.reviews.aggregate(models.Avg('rating'))['rating__avg']
+
+    def review_count(self):
+        # Count the number of reviews
+        return self.reviews.count()
+
 class Message(models.Model):
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sent_messages')
     receiver = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='received_messages')
@@ -56,3 +65,19 @@ class Message(models.Model):
         if self.conversation_starter:
             return reverse('message_detail', kwargs={'pk': self.conversation_starter.pk})
         return reverse('message_detail', kwargs={'pk': self.pk})
+
+class Review(models.Model):
+    product = models.ForeignKey('core.Product', on_delete=models.CASCADE, related_name='reviews')
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reviews')
+    rating = models.IntegerField(
+        validators=[
+            MinValueValidator(1),
+            MaxValueValidator(5)
+        ]
+    )
+    comment = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'Review for {self.product.name} by {self.author.username}'
+

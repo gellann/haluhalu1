@@ -31,4 +31,7 @@ urlpatterns = [
     path('messages/<int:pk>/', MessageDetailView.as_view(), name='message_detail'),
 
     path('messages/<int:pk>/delete/', views.delete_conversation_view, name='delete_conversation'),
+
+    path('product/<int:pk>/add_review/', views.add_review, name='add_review'),
+
 ]

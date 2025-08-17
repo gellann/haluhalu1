@@ -10,6 +10,8 @@ from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Q
 from django.db.models import Max, F, Subquery, OuterRef
+from django.http import HttpResponseForbidden
+from .models import Product, Review
 
 
 from .forms import CustomUserCreationForm, ProductForm, MessageForm
@@ -86,6 +88,20 @@ class ProductDetailView(DetailView):
     model = Product
     template_name = 'core/product_detail.html'
     context_object_name = 'product'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        product = self.get_object()
+
+        # Add the reviews for this product to the context
+        context['reviews'] = product.reviews.all().order_by('-created_at')
+
+        # Add the average rating and review count to the context
+        context['average_rating'] = product.average_rating()
+        context['review_count'] = product.review_count()
+
+        return context
+
 
 class ProductCreateView(LoginRequiredMixin, CreateView):
     model = Product
@@ -317,3 +333,26 @@ def delete_conversation_view(request, pk):
 
     messages.success(request, "Conversation deleted successfully.")
     return redirect('inbox')
+
+
+@login_required
+def add_review(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+
+    if request.method == 'POST':
+        rating = request.POST.get('rating')
+        comment = request.POST.get('comment')
+
+        # Check if the user has already reviewed this product
+        if Review.objects.filter(product=product, author=request.user).exists():
+            return HttpResponseForbidden("You have already reviewed this product.")
+
+        Review.objects.create(
+            product=product,
+            author=request.user,
+            rating=rating,
+            comment=comment
+        )
+        return redirect('product_detail', pk=pk)
+
+    return redirect('product_detail', pk=pk)

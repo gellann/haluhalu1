@@ -11,11 +11,9 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Q
 from django.db.models import Max, F, Subquery, OuterRef
 from django.http import HttpResponseForbidden
-from .models import Product, Review
-
-
+# Combined imports to avoid redundancy
+from .models import CustomUser, Product, Message, Review
 from .forms import CustomUserCreationForm, ProductForm, MessageForm
-from .models import CustomUser, Product, Message
 
 
 def signup_view(request):
@@ -34,6 +32,7 @@ def signup_view(request):
     else:
         form = CustomUserCreationForm()
         return render(request, 'main/signup.html', {'form': form})
+
 
 def login_view(request):
     form = AuthenticationForm(request, data=request.POST or None)
@@ -100,6 +99,12 @@ class ProductDetailView(DetailView):
         context['average_rating'] = product.average_rating()
         context['review_count'] = product.review_count()
 
+        # NEW: Check if the current user has reviewed this product
+        if self.request.user.is_authenticated:
+            context['has_reviewed'] = product.reviews.filter(author=self.request.user).exists()
+        else:
+            context['has_reviewed'] = False
+
         return context
 
 
@@ -116,6 +121,7 @@ class ProductCreateView(LoginRequiredMixin, CreateView):
         messages.success(self.request, "Product created successfully!")
         return super().form_valid(form)
 
+
 class ProductUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = Product
     form_class = ProductForm
@@ -131,6 +137,7 @@ class ProductUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     def get_success_url(self):
         messages.success(self.request, "Product updated successfully!")
         return reverse_lazy('product_detail', kwargs={'pk': self.object.pk})
+
 
 class ProductDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     model = Product
@@ -164,7 +171,7 @@ class InboxView(LoginRequiredMixin, ListView):
         # and are not deleted by the current user.
         user_involved_conversation_starter_ids = Message.objects.filter(
             Q(sender=user, is_deleted_by_sender=False) | Q(receiver=user, is_deleted_by_receiver=False)
-        ).values_list('conversation_starter__pk', flat=True) # Get starter PKs of all involved messages
+        ).values_list('conversation_starter__pk', flat=True)  # Get starter PKs of all involved messages
 
         # Add the PKs of messages that are their own conversation starters (initial messages)
         user_involved_initial_message_ids = Message.objects.filter(
@@ -174,7 +181,7 @@ class InboxView(LoginRequiredMixin, ListView):
 
         # Combine and get unique non-None starter PKs
         unique_starter_pks = set(list(user_involved_conversation_starter_ids) + list(user_involved_initial_message_ids))
-        unique_starter_pks.discard(None) # Remove None if present
+        unique_starter_pks.discard(None)  # Remove None if present
 
         # Fetch the actual conversation starter objects for these unique PKs
         # These are the "heads" of the conversations that should appear in the inbox
@@ -190,7 +197,7 @@ class InboxView(LoginRequiredMixin, ListView):
         latest_messages_per_conversation = []
         for starter in valid_conversation_starters:
             latest_message_in_thread = Message.objects.filter(
-                Q(conversation_starter=starter) | Q(pk=starter.pk) # All messages related to this starter
+                Q(conversation_starter=starter) | Q(pk=starter.pk)  # All messages related to this starter
             ).filter(
                 Q(sender=user, is_deleted_by_sender=False) | Q(receiver=user, is_deleted_by_receiver=False)
             ).order_by('-sent_at').first()
@@ -201,13 +208,14 @@ class InboxView(LoginRequiredMixin, ListView):
         # Sort these summary messages by their sent_at in descending order
         return sorted(latest_messages_per_conversation, key=lambda x: x.sent_at, reverse=True)
 
+
 # REMOVED: SentMessagesView is no longer needed
 
 class SendMessageView(LoginRequiredMixin, CreateView):
     model = Message
     form_class = MessageForm
     template_name = 'core/send_message.html'
-    success_url = reverse_lazy('inbox') # Always redirect to inbox
+    success_url = reverse_lazy('inbox')  # Always redirect to inbox
     login_url = 'login'
 
     def get_form_kwargs(self):
@@ -229,8 +237,10 @@ class SendMessageView(LoginRequiredMixin, CreateView):
 
         if parent_message_id:
             parent_message = get_object_or_404(Message, pk=parent_message_id)
-            initial['receiver'] = parent_message.sender if self.request.user == parent_message.receiver else parent_message.receiver
-            initial['subject'] = f"Re: {parent_message.subject}" if not parent_message.subject.startswith('Re:') else parent_message.subject
+            initial[
+                'receiver'] = parent_message.sender if self.request.user == parent_message.receiver else parent_message.receiver
+            initial['subject'] = f"Re: {parent_message.subject}" if not parent_message.subject.startswith(
+                'Re:') else parent_message.subject
         return initial
 
     def form_valid(self, form):
@@ -253,6 +263,7 @@ class SendMessageView(LoginRequiredMixin, CreateView):
         messages.success(self.request, "Message sent successfully!")
         return response
 
+
 class MessageDetailView(LoginRequiredMixin, DetailView):
     model = Message
     template_name = 'core/message_detail.html'
@@ -272,7 +283,6 @@ class MessageDetailView(LoginRequiredMixin, DetailView):
         if obj.conversation_starter and obj.conversation_starter.pk != obj.pk:
             return get_object_or_404(self.get_queryset(), pk=obj.conversation_starter.pk)
         return obj
-
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -307,6 +317,7 @@ class MessageDetailView(LoginRequiredMixin, DetailView):
 
         return context
 
+
 @login_required
 def delete_conversation_view(request, pk):
     """
@@ -335,6 +346,7 @@ def delete_conversation_view(request, pk):
     return redirect('inbox')
 
 
+# REVISED: add_review view
 @login_required
 def add_review(request, pk):
     product = get_object_or_404(Product, pk=pk)
@@ -345,14 +357,34 @@ def add_review(request, pk):
 
         # Check if the user has already reviewed this product
         if Review.objects.filter(product=product, author=request.user).exists():
-            return HttpResponseForbidden("You have already reviewed this product.")
+            messages.error(request,
+                           "You have already reviewed this product. Delete your previous review to add a new one.")
+            return redirect('product_detail', pk=pk)
 
+        # Create the new review
         Review.objects.create(
             product=product,
             author=request.user,
             rating=rating,
             comment=comment
         )
+        messages.success(request, "Review submitted successfully!")
         return redirect('product_detail', pk=pk)
 
     return redirect('product_detail', pk=pk)
+
+
+# NEW: view function to delete a review
+@login_required
+def delete_review(request, pk):
+    review = get_object_or_404(Review, pk=pk)
+
+    # Check if the logged-in user is the author of the review
+    if request.user != review.author:
+        messages.error(request, "You are not authorized to delete this review.")
+        return redirect('product_detail', pk=review.product.pk)
+
+    # Delete the review
+    review.delete()
+    messages.success(request, "Review deleted successfully!")
+    return redirect('product_detail', pk=review.product.pk)

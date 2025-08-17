@@ -4,7 +4,7 @@ from django.urls import path
 from . import views
 from .views import (
     ProductListView, ProductDetailView, ProductCreateView, ProductUpdateView, ProductDeleteView,
-    InboxView, SendMessageView, MessageDetailView, # Removed SentMessagesView
+    InboxView, SendMessageView, MessageDetailView,  # Removed SentMessagesView
     delete_conversation_view
 )
 
@@ -34,4 +34,6 @@ urlpatterns = [
 
     path('product/<int:pk>/add_review/', views.add_review, name='add_review'),
 
+    # NEW URL to handle review deletion
+    path('review/<int:pk>/delete/', views.delete_review, name='delete_review'),
 ]

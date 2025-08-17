@@ -67,7 +67,7 @@ class Message(models.Model):
         return reverse('message_detail', kwargs={'pk': self.pk})
 
 class Review(models.Model):
-    product = models.ForeignKey('core.Product', on_delete=models.CASCADE, related_name='reviews')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reviews')
     rating = models.IntegerField(
         validators=[
@@ -79,5 +79,4 @@ class Review(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'Review for {self.product.name} by {self.author.username}'
-
+        return f'Review for {self.product.title} by {self.author.username}'

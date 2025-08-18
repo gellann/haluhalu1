@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block title %}Help & FAQs{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1 class="mb-4">Help & Frequently Asked Questions</h1>
+    <hr>
+    <div class="accordion" id="helpAccordion">
+        {% for article in articles %}
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="heading-{{ article.id }}">
+                <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ article.id }}" aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" aria-controls="collapse-{{ article.id }}">
+                    {{ article.question }}
+                </button>
+            </h2>
+            <div id="collapse-{{ article.id }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" aria-labelledby="heading-{{ article.id }}" data-bs-parent="#helpAccordion">
+                <div class="accordion-body">
+                    {{ article.answer|linebreaksbr }}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <p>No help articles are available at the moment. Please check back later.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

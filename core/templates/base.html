@@ -53,6 +53,8 @@
                     </div>
                 </div>
 
+                <a href="{% url 'help' %}" class="text-white text-base font-thin hover:text-gray-300 transition duration-200">Help</a>
+
                 {% if user.is_authenticated %}
                     {% if user.is_seller %}
                         <a href="{% url 'product_create' %}" class="flex items-center text-white text-base font-thin hover:text-gray-900 transition duration-200">

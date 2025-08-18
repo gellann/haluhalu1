@@ -80,3 +80,18 @@ class Review(models.Model):
 
     def __str__(self):
         return f'Review for {self.product.title} by {self.author.username}'
+
+class HelpArticle(models.Model):
+    """
+    Model to store Help articles and FAQs.
+    """
+    question = models.CharField(max_length=255)
+    answer = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.question
+
+    class Meta:
+        verbose_name_plural = "Help Articles"
+        ordering = ['created_at']

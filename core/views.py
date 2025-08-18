@@ -379,12 +379,17 @@ def add_review(request, pk):
 def delete_review(request, pk):
     review = get_object_or_404(Review, pk=pk)
 
-    # Check if the logged-in user is the author of the review
     if request.user != review.author:
         messages.error(request, "You are not authorized to delete this review.")
         return redirect('product_detail', pk=review.product.pk)
 
-    # Delete the review
     review.delete()
     messages.success(request, "Review deleted successfully!")
     return redirect('product_detail', pk=review.product.pk)
+
+def help_view(request):
+    articles = HelpArticle.objects.all()
+    context = {
+        'articles': articles
+    }
+    return render(request, 'core/help.html', context)

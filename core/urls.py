@@ -34,6 +34,7 @@ urlpatterns = [
 
     path('product/<int:pk>/add_review/', views.add_review, name='add_review'),
 
-    # NEW URL to handle review deletion
     path('review/<int:pk>/delete/', views.delete_review, name='delete_review'),
+
+    path('help/', views.help_view, name='help'),
 ]
